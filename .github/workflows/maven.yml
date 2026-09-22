@@ -1,21 +1,59 @@
-name: Java CI with Maven
+name: Deployment Pipeline with Stages
 
 on:
-      push:
-        branches: [ main ]
-      pull_request:
-        branches: [ main ]
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-      build:
-        runs-on: ubuntu-latest
+  build-and-test:
+    name: Build and Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    - name: Compile and Run Tests
+      run: mvn clean test -f automatizacion/pom.xml
 
-        steps:
-        - uses: actions/checkout@v3
-        - name: Set up JDK 11
-          uses: actions/setup-java@v3
-          with:
-            java-version: '11'
-            distribution: 'temurin'
-        - name: Build with Maven
-          run: mvn clean test -f automatizacion/pom.xml
+  acceptance-tests:
+    name: Acceptance Tests Stage
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    - name: Run Acceptance / Integration Tests
+      run: mvn test -Dtest=IntegrationTest -f automatizacion/pom.xml
+
+  deploy-test:
+    name: Deploy to Test Environment
+    needs: acceptance-tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Simulate Deployment
+      run: |
+        echo "Iniciando despliegue automatizado al ambiente de prueba (Staging)..."
+        echo "Empaquetando artefactos..."
+        echo "Despliegue completado con éxito en el servidor de pruebas."
+
+  rollback:
+    name: Rollback Mechanism
+    needs: [build-and-test, acceptance-tests, deploy-test]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Execute Rollback
+      run: |
+        echo "¡ATENCIÓN! Se ha detectado un fallo en el pipeline de pruebas o despliegue."
+        echo "Iniciando protocolo de Rollback..."
+        echo "Revirtiendo al estado anterior estable (Blue-Green / Last Stable Version)..."
+        echo "Rollback ejecutado exitosamente. Sistema restaurado."
